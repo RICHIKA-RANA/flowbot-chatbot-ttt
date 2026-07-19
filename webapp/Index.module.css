@@ -1762,12 +1762,16 @@
 }
 
 .botName {
-  color: #3a4664;
+  color: #6b7280;
   font-family: "Aspekta";
-  font-size: 15px;
+  font-size: 12px;
   font-style: normal;
-  font-weight: 400;
-  line-height: 20px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  display: inline-block;
+  margin-bottom: 6px;
 }
 
 .cloudform {
@@ -1928,24 +1932,35 @@
 }
 
 .userMessageFont {
-  font-size: 16px;
-  color: #3a4664;
+  font-size: 15px;
+  color: #1f2937;
+  line-height: 1.65;
+  margin: 0 0 0.5em;
+}
+.userMessageFont:last-child {
+  margin-bottom: 0;
 }
 .chat_container_left,
 .chat_container_right {
   display: inline-block;
   width: fit-content;
   max-width: 100%;
-  padding: 12px 16px;
+  padding: 14px 18px;
   word-break: break-word;
+  transition: box-shadow 0.2s ease;
 }
 
 .chat_container_left {
   position: relative;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px 14px 14px 14px;
-  color: #111827;
+  border: 1px solid #eaecf0;
+  border-radius: 4px 16px 16px 16px;
+  color: #1f2937;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 20px rgba(16, 24, 40, 0.05);
+}
+
+.chat_container_left:hover {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 10px 24px rgba(16, 24, 40, 0.08);
 }
 
 .chat_container_left_with_reference {
@@ -1953,10 +1968,11 @@
 }
 
 .chat_container_right {
-  background: #e0e8fb;
-  border: 1px solid #d1d5db;
-  border-radius: 14px 4px 14px 14px;
-  color: #111827;
+  background: linear-gradient(135deg, #eef4ff 0%, #e4edff 100%);
+  border: 1px solid #d6e4ff;
+  border-radius: 16px 4px 16px 16px;
+  color: #1e293b;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.06);
 }
 
 /* Bot row: icon on left, bubble on left */
@@ -2010,20 +2026,14 @@
   margin-top: 8px;
 }
 
-.userMessageFont {
-  line-height: 1.4;
-}
-
 .markdownanswerspan {
-  color: var(--grey-100, #727a8b);
-
-  /* 15px/regular */
+  color: #374151;
   font-family: Aspekta;
   font-size: 15px;
   font-style: normal;
   font-weight: 400;
-  line-height: 20px;
-  /* 133.333% */
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
 }
 
 .extraContainer {
