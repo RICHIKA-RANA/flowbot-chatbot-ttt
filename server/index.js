@@ -118,11 +118,22 @@ const refineBotResponse = async (prompt) => {
 
     const response = await axios.post(url, body, { headers });
     const structuredData = response.data.choices[0].message;
+    const usage = response.data.usage;
 
-    return structuredData?.content;
+    return {
+      content: structuredData?.content,
+      input_tokens: usage?.prompt_tokens,
+      output_tokens: usage?.completion_tokens,
+      total_tokens: usage?.total_tokens,
+    };
   } catch (error) {
     console.error("Error in ChatGPT Request:", error?.response?.data);
-    return false;
+    return {
+      content: false,
+      input_tokens: 0,
+      output_tokens: 0,
+      total_tokens: 0,
+    };
   }
 };
 
@@ -137,6 +148,7 @@ export const start = async (handler, question) => {
   }
 
   let finalResponse = ""
+  let tokens = { input_tokens: 0, output_tokens: 0, total_tokens: 0 }
   const graphIds = handler?.graphIds
   if (graphIds && graphIds.length > 0) {
     // getting the query relevant content from document trained;
@@ -144,7 +156,13 @@ export const start = async (handler, question) => {
     // preparing response for the user by using the relevant content retrieved
     if (tttResponse && tttResponse?.length > 0) {
       const responsePrompt = responseGenerationPrompt(question, tttResponse)
-      finalResponse = await refineBotResponse(responsePrompt)
+      const refined = await refineBotResponse(responsePrompt)
+      finalResponse = refined?.content
+      tokens = {
+        input_tokens: refined?.input_tokens,
+        output_tokens: refined?.output_tokens,
+        total_tokens: refined?.total_tokens,
+      }
     }
   } else {
     finalResponse = "Please upload a document to train"
@@ -167,5 +185,6 @@ export const start = async (handler, question) => {
     error: false,
     errorMessage: "",
     hideAnswer: false,
+    tokens,
   };
 };
