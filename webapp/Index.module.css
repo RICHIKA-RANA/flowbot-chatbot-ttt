@@ -2463,20 +2463,55 @@
   background: white;
 }
 
+.sourceRow {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #ececec;
+  background: white;
+}
+
+.sourceRow:last-child {
+  border-bottom: none;
+}
+
+.sourceRow:hover {
+  background: #fafafa;
+}
+
+.sourceOpenDoc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-right: 16px;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sourceOpenDoc:hover {
+  border-color: #4f6df5;
+  color: #4f6df5;
+}
+
+/* The divider lives on .sourceRow, which wraps every item. */
 .sourceItem {
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 16px;
   width: 100%;
-  background: white;
+  min-width: 0;
+  background: none;
   border: none;
-  border-bottom: 1px solid #ececec;
   cursor: pointer;
-}
-
-.sourceItem:last-child {
-  border-bottom: none;
 }
 
 .sourceItem:hover {
