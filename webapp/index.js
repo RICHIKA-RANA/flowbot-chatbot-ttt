@@ -21,7 +21,7 @@ export const sendIcon = `
 
 export const themeColor = "#3b82f6";
 export const Navbar = true;
-export const botName = "James Bot";
+export const botName = "TalkingDB";
 export const enabled = true;
 export const showUserResponseFirst = true;
 export const hideEditButton = true;
