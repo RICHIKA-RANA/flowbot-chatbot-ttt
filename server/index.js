@@ -47,14 +47,12 @@ const sendRequest = async (handler, question) => {
       }
     );
     
-    const relevantElements = response?.data?.elements || []
-    if (relevantElements?.length > 0) {
-      const contents = relevantElements.map(item => item?.content).filter(content => typeof content === 'string' && content.trim());
-      return contents
-    } else {
+    const relevantElements = response?.data?.elements
+    if (!Array.isArray(relevantElements) || relevantElements.length === 0) {
       console.log("didn't find any relevant contents")
       return []
     }
+    return relevantElements.filter(el => typeof el?.content === 'string' && el.content.trim())
   } catch (err) {
     console.error("TTT request failed", {
       message: err?.message,
@@ -63,6 +61,22 @@ const sendRequest = async (handler, question) => {
     });
     return []
   }
+};
+
+// Shapes a /v1/queries element into the { pageContent, metadata }
+const toSourceDocument = (el) => {
+  const layoutMatch = String(el?.id ?? "").match(/layout::(\d+)/);
+  const pageFromId = layoutMatch ? Number(layoutMatch[1]) + 1 : undefined;
+  return {
+    pageContent: el?.content,
+    metadata: {
+      pageNumber: el?.page ?? el?.metadata?.page ?? pageFromId,
+      graph_id: el?.graph_id,
+      filename: el?.metadata?.filename,
+      nodeId: el?.id,
+      headingPath: el?.metadata?.heading_path,
+    },
+  };
 };
 
 const responseGenerationPrompt = (userQuery, documentContents) => {
@@ -149,12 +163,13 @@ export const start = async (handler, question) => {
 
   let finalResponse = ""
   let tokens = { input_tokens: 0, output_tokens: 0, total_tokens: 0 }
+  let sourceDocuments = []
   const graphIds = handler?.graphIds
   if (graphIds && graphIds.length > 0) {
-    // getting the query relevant content from document trained;
-    const tttResponse = await sendRequest(handler,question)
-    // preparing response for the user by using the relevant content retrieved
-    if (tttResponse && tttResponse?.length > 0) {
+    const relevantElements = await sendRequest(handler, question)
+    sourceDocuments = relevantElements.map(toSourceDocument)
+    if (relevantElements.length > 0) {
+      const tttResponse = relevantElements.map(el => el?.content)
       const responsePrompt = responseGenerationPrompt(question, tttResponse)
       const refined = await refineBotResponse(responsePrompt)
       finalResponse = refined?.content
@@ -176,6 +191,7 @@ export const start = async (handler, question) => {
   return {
     text: String(finalResponse),
     src: "talkingDb",
+    sourceDocuments,
     currentStep: {
       id: 1,
       question: question,
