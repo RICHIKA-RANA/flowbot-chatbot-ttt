@@ -25,6 +25,13 @@ const GPT_BEARER_TOKEN = process?.env?.GPT_BEARER_TOKEN;
 const TTT_URL = process?.env?.TTT_URL;
 const MAX_RESULTS_FROM_TTT_PER_REQUEST = 5
 
+const NO_COVERAGE_MESSAGE = "The documents I have access to don't cover this. Try rephrasing the question please...";
+const NO_ANSWER_FALLBACK_MESSAGE = "Sorry, I don't have an answer for that.";
+
+const isNoAnswerResponse = (text) =>
+  typeof text === "string" &&
+  (text.includes(NO_COVERAGE_MESSAGE) || text.includes(NO_ANSWER_FALLBACK_MESSAGE));
+
 const sendRequest = async (handler, question) => {
   try {
     const graphIds = handler?.graphIds
@@ -92,7 +99,7 @@ const responseGenerationPrompt = (userQuery, documentContents) => {
     - Use simple language a non-expert would understand immediately.
     - Keep it simple, but include important conditions if they affect correctness.
     - If the document content is insufficient to answer, write exactly:
-      "The documents I have access to don't cover this. Try rephrasing the question please..."
+      "${NO_COVERAGE_MESSAGE}"
 
     ## Additional Context
     _(Only include this section if the quick answer needs elaboration.)_
@@ -185,7 +192,11 @@ export const start = async (handler, question) => {
   
   // default fallback message
   if (!finalResponse || finalResponse == "") {
-    finalResponse = "Sorry, I don't have an answer for that."
+    finalResponse = NO_ANSWER_FALLBACK_MESSAGE
+  }
+
+  if (isNoAnswerResponse(finalResponse)) {
+    sourceDocuments = []
   }
 
   return {
