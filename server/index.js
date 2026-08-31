@@ -1,6 +1,7 @@
 const axios = require("axios");
 const dotenv = require("dotenv");
 const path = require("path");
+const { responseGenerationPrompt, NO_COVERAGE_MESSAGE, NO_ANSWER_FALLBACK_MESSAGE } = require("./prompt");
 dotenv.config({
   path: path.join(
     process.cwd(),
@@ -24,9 +25,6 @@ export const openid = {
 const GPT_BEARER_TOKEN = process?.env?.GPT_BEARER_TOKEN;
 const TTT_URL = process?.env?.TTT_URL;
 const MAX_RESULTS_FROM_TTT_PER_REQUEST = 5
-
-const NO_COVERAGE_MESSAGE = "The documents I have access to don't cover this. Try rephrasing the question please...";
-const NO_ANSWER_FALLBACK_MESSAGE = "Sorry, I don't have an answer for that.";
 
 const ANSWER_STATUS_LINE_PATTERN = /<!--\s*ANSWER_STATUS:\s*(ANSWERED|NO_ANSWER)\s*-->\s*$/;
 
@@ -98,42 +96,6 @@ const toSourceDocument = (el) => {
     },
   };
 };
-
-const responseGenerationPrompt = (userQuery, documentContents) => {
-  return `
-    You are a document assistant. Answer the user's question using ONLY the provided document excerpts.
-
-    Question: ${userQuery}
-
-    Relevant document excerpts: ${documentContents}
-
-    ## Quick Answer
-    Write 1–3 plain-English sentences that directly answer the question.
-    - Use simple language a non-expert would understand immediately.
-    - Keep it simple, but include important conditions if they affect correctness.
-    - If the document content is insufficient to answer, write exactly:
-      "${NO_COVERAGE_MESSAGE}"
-
-    ## Additional Context
-    _(Only include this section if the quick answer needs elaboration.)_
-    Provide additional context, supporting clauses, exceptions, and related information drawn from the document.
-
-    Structure this section with:
-    - A short introductory sentence or two
-    - Sub-headings (###) where there are distinct aspects (e.g., "### Exceptions", "### How it works")
-    - Bullet points for lists of conditions, steps, or rules
-    - Keep each bullet to one clear idea
-
-    ## Follow-Up Questions
-    List 2–3 short questions the user is likely to ask next, based on the document content and their original question.
-    - Each question must use actual terms, names, or conditions from the document — never placeholder text like [term] or [condition].
-    - Each question must be answerable from the provided document excerpts.
-    - Format as a numbered list.
-
-    Finally, after everything above, add one line by itself at the very end of your entire response — nothing may follow it:
-    <!-- ANSWER_STATUS: NO_ANSWER --> if the Quick Answer is the "${NO_COVERAGE_MESSAGE}" sentence, otherwise <!-- ANSWER_STATUS: ANSWERED -->
-  `;
-}
 
 const refineBotResponse = async (prompt) => {
   try {
