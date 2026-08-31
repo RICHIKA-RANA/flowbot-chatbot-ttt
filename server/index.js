@@ -83,12 +83,10 @@ const sendRequest = async (handler, question) => {
 
 // Shapes a /v1/queries element into the { pageContent, metadata }
 const toSourceDocument = (el) => {
-  const layoutMatch = String(el?.id ?? "").match(/layout::(\d+)/);
-  const pageFromId = layoutMatch ? Number(layoutMatch[1]) + 1 : undefined;
   return {
     pageContent: el?.content,
     metadata: {
-      pageNumber: el?.page ?? el?.metadata?.page ?? pageFromId,
+      pageNumber: el?.page ?? el?.metadata?.page,
       graph_id: el?.graph_id,
       filename: el?.metadata?.filename,
       nodeId: el?.id,
