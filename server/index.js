@@ -28,7 +28,20 @@ const MAX_RESULTS_FROM_TTT_PER_REQUEST = 5
 const NO_COVERAGE_MESSAGE = "The documents I have access to don't cover this. Try rephrasing the question please...";
 const NO_ANSWER_FALLBACK_MESSAGE = "Sorry, I don't have an answer for that.";
 
-const isNoAnswerResponse = (text) =>
+const ANSWER_STATUS_LINE_PATTERN = /<!--\s*ANSWER_STATUS:\s*(ANSWERED|NO_ANSWER)\s*-->\s*$/;
+
+const extractAnswerStatus = (text) => {
+  if (typeof text !== "string") {
+    return { status: null, text };
+  }
+  const match = text.match(ANSWER_STATUS_LINE_PATTERN);
+  if (!match) {
+    return { status: null, text };
+  }
+  return { status: match[1], text: text.slice(0, match.index).trimEnd() };
+};
+
+const looksLikeNoAnswerText = (text) =>
   typeof text === "string" &&
   (text.includes(NO_COVERAGE_MESSAGE) || text.includes(NO_ANSWER_FALLBACK_MESSAGE));
 
@@ -116,6 +129,9 @@ const responseGenerationPrompt = (userQuery, documentContents) => {
     - Each question must use actual terms, names, or conditions from the document — never placeholder text like [term] or [condition].
     - Each question must be answerable from the provided document excerpts.
     - Format as a numbered list.
+
+    Finally, after everything above, add one line by itself at the very end of your entire response — nothing may follow it:
+    <!-- ANSWER_STATUS: NO_ANSWER --> if the Quick Answer is the "${NO_COVERAGE_MESSAGE}" sentence, otherwise <!-- ANSWER_STATUS: ANSWERED -->
   `;
 }
 
@@ -169,6 +185,7 @@ export const start = async (handler, question) => {
   }
 
   let finalResponse = ""
+  let answerStatus = null
   let tokens = { input_tokens: 0, output_tokens: 0, total_tokens: 0 }
   let sourceDocuments = []
   const graphIds = handler?.graphIds
@@ -179,7 +196,9 @@ export const start = async (handler, question) => {
       const tttResponse = relevantElements.map(el => el?.content)
       const responsePrompt = responseGenerationPrompt(question, tttResponse)
       const refined = await refineBotResponse(responsePrompt)
-      finalResponse = refined?.content
+      const extracted = extractAnswerStatus(refined?.content)
+      finalResponse = extracted.text
+      answerStatus = extracted.status
       tokens = {
         input_tokens: refined?.input_tokens,
         output_tokens: refined?.output_tokens,
@@ -189,13 +208,18 @@ export const start = async (handler, question) => {
   } else {
     finalResponse = "Please upload a document to train"
   }
-  
+
   // default fallback message
   if (!finalResponse || finalResponse == "") {
     finalResponse = NO_ANSWER_FALLBACK_MESSAGE
+    answerStatus = "NO_ANSWER"
   }
 
-  if (isNoAnswerResponse(finalResponse)) {
+  const isNoAnswer = answerStatus
+    ? answerStatus === "NO_ANSWER"
+    : looksLikeNoAnswerText(finalResponse)
+
+  if (isNoAnswer) {
     sourceDocuments = []
   }
 
