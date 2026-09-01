@@ -12,6 +12,7 @@ dotenv.config({
 
 export const conversational = true;
 export const pollingInterval = 400;
+export const streaming = true;
 
 export const openid = {
   authorization_endpoint: "",
@@ -95,12 +96,15 @@ const toSourceDocument = (el) => {
   };
 };
 
-const refineBotResponse = async (prompt) => {
+const refineBotResponse = async (prompt, onToken) => {
+  const emit = onToken || (() => {});
   try {
     const url = "https://api.openai.com/v1/chat/completions";
     const body = {
       model: "gpt-4",
       temperature: 0.4,
+      stream: true,
+      stream_options: { include_usage: true },
       messages: [
         {
           role: "user",
@@ -113,18 +117,47 @@ const refineBotResponse = async (prompt) => {
       Authorization: `Bearer ${GPT_BEARER_TOKEN}`,
     };
 
-    const response = await axios.post(url, body, { headers });
-    const structuredData = response.data.choices[0].message;
-    const usage = response.data.usage;
+    const response = await axios.post(url, body, { headers, responseType: "stream" });
+
+    let content = "";
+    let usage = null;
+    let buffer = "";
+
+    for await (const chunk of response.data) {
+      buffer += chunk.toString("utf8");
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data: ")) continue;
+        const payload = trimmed.slice(6);
+        if (payload === "[DONE]") continue;
+
+        try {
+          const parsed = JSON.parse(payload);
+          const delta = parsed?.choices?.[0]?.delta?.content;
+          if (delta) {
+            content += delta;
+            if (!content.includes("<!--")) emit(delta);
+          }
+          if (parsed?.usage) {
+            usage = parsed.usage;
+          }
+        } catch (parseErr) {
+          console.error("Failed to parse ChatGPT stream chunk", { message: parseErr?.message });
+        }
+      }
+    }
 
     return {
-      content: structuredData?.content,
+      content,
       input_tokens: usage?.prompt_tokens,
       output_tokens: usage?.completion_tokens,
       total_tokens: usage?.total_tokens,
     };
   } catch (error) {
-    console.error("Error in ChatGPT Request:", error?.response?.data);
+    console.error("Error in ChatGPT Request:", error?.response?.data || error?.message);
     return {
       content: false,
       input_tokens: 0,
@@ -134,7 +167,7 @@ const refineBotResponse = async (prompt) => {
   }
 };
 
-export const start = async (handler, question) => {
+export const start = async (handler, question, onToken) => {
   if (!question || !question.trim()) {
     return {
       text: "",
@@ -155,7 +188,7 @@ export const start = async (handler, question) => {
     if (relevantElements.length > 0) {
       const tttResponse = relevantElements.map(el => el?.content)
       const responsePrompt = responseGenerationPrompt(question, tttResponse)
-      const refined = await refineBotResponse(responsePrompt)
+      const refined = await refineBotResponse(responsePrompt, onToken)
       const extracted = extractAnswerStatus(refined?.content)
       finalResponse = extracted.text
       answerStatus = extracted.status
