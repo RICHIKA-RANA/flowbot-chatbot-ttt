@@ -28,17 +28,29 @@ const MAX_RESULTS_FROM_TTT_PER_REQUEST = 5
 
 const normalizeForMatch = (text) =>
   text
+    .toLowerCase()
     .replace(/[‘’]/g, "'")
     .replace(/[“”]/g, '"')
     .replace(/…/g, "...")
-    .replace(/[*_]/g, "");
+    .replace(/[*_]/g, "")
+    .replace(/\bdo not\b/g, "don't")
+    .replace(/\s+/g, " ")
+    .replace(/[.\s]+$/g, "")
+    .trim();
 
 const NORMALIZED_NO_COVERAGE_MESSAGE = normalizeForMatch(NO_COVERAGE_MESSAGE);
 const NORMALIZED_NO_ANSWER_FALLBACK_MESSAGE = normalizeForMatch(NO_ANSWER_FALLBACK_MESSAGE);
 
+const QUICK_ANSWER_SECTION_PATTERN = /##\s*quick answer\s*([\s\S]*?)(?=\n\s*##|$)/i;
+
+const extractQuickAnswer = (text) => {
+  const match = text.match(QUICK_ANSWER_SECTION_PATTERN);
+  return match ? match[1] : text;
+};
+
 const isNoAnswerResponse = (text) => {
   if (typeof text !== "string") return false;
-  const normalized = normalizeForMatch(text);
+  const normalized = normalizeForMatch(extractQuickAnswer(text));
   return (
     normalized.includes(NORMALIZED_NO_COVERAGE_MESSAGE) ||
     normalized.includes(NORMALIZED_NO_ANSWER_FALLBACK_MESSAGE)
@@ -102,7 +114,7 @@ const refineBotResponse = async (prompt) => {
     const url = "https://api.openai.com/v1/chat/completions";
     const body = {
       model: "gpt-4",
-      temperature: 0.4,
+      temperature: 0,
       messages: [
         {
           role: "user",
@@ -141,8 +153,12 @@ export const start = async (handler, question) => {
     return {
       text: "",
       src: "talkingDb",
+      sourceDocuments: [],
       currentStep: null,
+      error: false,
+      errorMessage: "",
       hideAnswer: true,
+      tokens: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
     };
   }
 
@@ -168,8 +184,7 @@ export const start = async (handler, question) => {
     finalResponse = "Please upload a document to train"
   }
 
-  // default fallback message
-  if (!finalResponse || finalResponse == "") {
+  if (!finalResponse || !String(finalResponse).trim()) {
     finalResponse = NO_ANSWER_FALLBACK_MESSAGE
   }
 
