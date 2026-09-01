@@ -31,9 +31,6 @@ const responseGenerationPrompt = (userQuery, documentContents) => {
     - Each question must use actual terms, names, or conditions from the document — never placeholder text like [term] or [condition].
     - Each question must be answerable from the provided document excerpts.
     - Format as a numbered list.
-
-    Finally, after everything above, add one line by itself at the very end of your entire response — nothing may follow it:
-    <!-- ANSWER_STATUS: NO_ANSWER --> if the Quick Answer is the "${NO_COVERAGE_MESSAGE}" sentence, otherwise <!-- ANSWER_STATUS: ANSWERED -->
   `;
 };
 

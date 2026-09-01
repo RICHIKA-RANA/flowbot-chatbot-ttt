@@ -26,22 +26,24 @@ const GPT_BEARER_TOKEN = process?.env?.GPT_BEARER_TOKEN;
 const TTT_URL = process?.env?.TTT_URL;
 const MAX_RESULTS_FROM_TTT_PER_REQUEST = 5
 
-const ANSWER_STATUS_LINE_PATTERN = /<!--\s*ANSWER_STATUS:\s*(ANSWERED|NO_ANSWER)\s*-->\s*$/;
+const normalizeForMatch = (text) =>
+  text
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/…/g, "...")
+    .replace(/[*_]/g, "");
 
-const extractAnswerStatus = (text) => {
-  if (typeof text !== "string") {
-    return { status: null, text };
-  }
-  const match = text.match(ANSWER_STATUS_LINE_PATTERN);
-  if (!match) {
-    return { status: null, text };
-  }
-  return { status: match[1], text: text.slice(0, match.index).trimEnd() };
+const NORMALIZED_NO_COVERAGE_MESSAGE = normalizeForMatch(NO_COVERAGE_MESSAGE);
+const NORMALIZED_NO_ANSWER_FALLBACK_MESSAGE = normalizeForMatch(NO_ANSWER_FALLBACK_MESSAGE);
+
+const isNoAnswerResponse = (text) => {
+  if (typeof text !== "string") return false;
+  const normalized = normalizeForMatch(text);
+  return (
+    normalized.includes(NORMALIZED_NO_COVERAGE_MESSAGE) ||
+    normalized.includes(NORMALIZED_NO_ANSWER_FALLBACK_MESSAGE)
+  );
 };
-
-const looksLikeNoAnswerText = (text) =>
-  typeof text === "string" &&
-  (text.includes(NO_COVERAGE_MESSAGE) || text.includes(NO_ANSWER_FALLBACK_MESSAGE));
 
 const sendRequest = async (handler, question) => {
   try {
@@ -145,7 +147,6 @@ export const start = async (handler, question) => {
   }
 
   let finalResponse = ""
-  let answerStatus = null
   let tokens = { input_tokens: 0, output_tokens: 0, total_tokens: 0 }
   let sourceDocuments = []
   const graphIds = handler?.graphIds
@@ -156,9 +157,7 @@ export const start = async (handler, question) => {
       const tttResponse = relevantElements.map(el => el?.content)
       const responsePrompt = responseGenerationPrompt(question, tttResponse)
       const refined = await refineBotResponse(responsePrompt)
-      const extracted = extractAnswerStatus(refined?.content)
-      finalResponse = extracted.text
-      answerStatus = extracted.status
+      finalResponse = refined?.content
       tokens = {
         input_tokens: refined?.input_tokens,
         output_tokens: refined?.output_tokens,
@@ -172,14 +171,9 @@ export const start = async (handler, question) => {
   // default fallback message
   if (!finalResponse || finalResponse == "") {
     finalResponse = NO_ANSWER_FALLBACK_MESSAGE
-    answerStatus = "NO_ANSWER"
   }
 
-  const isNoAnswer = answerStatus
-    ? answerStatus === "NO_ANSWER"
-    : looksLikeNoAnswerText(finalResponse)
-
-  if (isNoAnswer) {
+  if (isNoAnswerResponse(finalResponse)) {
     sourceDocuments = []
   }
 
