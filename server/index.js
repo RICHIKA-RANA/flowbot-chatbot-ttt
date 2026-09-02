@@ -111,8 +111,7 @@ const toSourceDocument = (el) => {
 };
 
 const refineBotResponse = async (prompt, onToken) => {
-  const emit = onToken || (() => {});
-  let emitted = 0;
+  let content = "";
   try {
     const url = "https://api.openai.com/v1/chat/completions";
     const body = {
@@ -135,7 +134,6 @@ const refineBotResponse = async (prompt, onToken) => {
     const response = await axios.post(url, body, { headers, responseType: "stream" });
     response.data.setEncoding("utf8");
 
-    let content = "";
     let usage = null;
     let buffer = "";
 
@@ -155,8 +153,7 @@ const refineBotResponse = async (prompt, onToken) => {
           const delta = parsed?.choices?.[0]?.delta?.content;
           if (delta) {
             content += delta;
-            emit(delta);
-            emitted += delta.length;
+            onToken?.(delta);
           }
           if (parsed?.usage) {
             usage = parsed.usage;
@@ -177,7 +174,7 @@ const refineBotResponse = async (prompt, onToken) => {
     console.error("Error in ChatGPT Request:", error?.response?.data || error?.message);
     // Tokens are already on the wire. Swallowing here would replace the answer the
     // user watched stream in with the NO_ANSWER fallback -- and save that to history.
-    if (emitted > 0) throw error;
+    if (content) throw error;
     return {
       content: false,
       input_tokens: 0,
